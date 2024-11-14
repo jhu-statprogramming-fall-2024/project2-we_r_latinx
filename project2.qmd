@@ -8,9 +8,9 @@ editor: visual
 
 Team Members:
 
--   Mateo Bandala Jacques \| abandal1\@jh.edu
+-   Mateo Bandala Jacques \| abandal1\@jh.edu \| abandal1
 
--   María Camila Restrepo \| mrestre\@jh.edu
+-   María Camila Restrepo \| mrestre\@jh.edu \| mrestre3
 
 # Part 1
 
@@ -37,7 +37,7 @@ census_api_key(Sys.getenv("CENSUS_API_KEY"))
 #Study question: 
 
 
-#First, we will create a function to make it easier to extract the populatio data we're intested in
+#First, we will create a function to make it easier to extract the population data we're interested in
 
 GET_CENSUS_ACS <- function(state, year) {
     if (!is.numeric(year)) {
@@ -319,9 +319,58 @@ skyscrapers_table %>%
     plot.subtitle = element_text(hjust = 0.5))
 
 
+
 ```
 
-After extracting data on super-tall skyscrapers from Wikipedia, we have found that most buildings over 350 meters in height are in Asia. Not only that, but over 50% of of them are in China. The only country in the Americas with a super-tall skyscraper is the United States, although Mexico and Brazil have one under construction. Similarly, the only super-tall skyscrapers in Africa are in Egypt. A limitation of this data is that Wikipedia is crowd-sourced, and is susceptible to changes by editors. Similarly, the information might be outdated, especially for articles with less traffic.
+### Height of skyscrapers throughout time
 
+```{r}
 
+glimpse(skyscrapers_table$height_meters)
+glimpse(skyscrapers_table$Year)
 
+#start by making height and year numeric
+skyscrapers_table <- skyscrapers_table %>%
+  mutate(height_meters = as.numeric(height_meters),
+         year = as.numeric(Year)) %>%
+  select(-Year)
+
+#first let's explore trends in heights by color
+
+ggplot(skyscrapers_table, aes(x = year, y = height_meters, color = continent)) +
+  geom_point() +
+  labs(x = "Year of construction", y = "Building height (meters)",
+       title = "Trends in the Height of Skyscrapers since 1931",
+       subtitle = "Skyscrapers are defined as buildings ≥350 m",
+       caption = "Data from Wikipedia's List of Tallest Buildings") +
+  scale_color_brewer(palette="Set1", name = "Continent")+
+  theme_minimal()
+
+#creating data frame where height is only incremental throughout the years
+maxheight <- skyscrapers_table %>%
+  filter(!is.na(year) & year != "") %>%
+  group_by(year) %>%
+  summarise(max_height = max(height_meters)) %>%
+  arrange(year) %>%
+  mutate(max_height = cummax(max_height)) %>%
+  filter(max_height == cummax(max_height)) %>%
+  select(year, max_height)
+
+#add all years between 1931 to 2025 for an accurate plot of the highest building at a time
+all_years <- data.frame(year = 1931:2025)
+maxheight_full <- all_years %>%
+  left_join(maxheight, by = "year") %>%
+  fill(max_height, .direction = "down") 
+
+ggplot(maxheight_full, aes(x = year, y = max_height)) +
+  geom_line(color = "blue", size = 1) +
+  labs(x = "Year of construction", y = "Height of the tallest building (meters)",
+       title = "Height of the Tallest Skyscraper Worldwide since 1931",
+       subtitle = "Skyscrapers are defined as buildings ≥350 m",
+       caption = "Data from Wikipedia's List of Tallest Buildings") +
+  theme_minimal()+
+  ylim(0, 900) 
+
+```
+
+After extracting data on super-tall skyscrapers from Wikipedia, we have found that most buildings over 350 meters in height are in Asia. Not only that, but over 50% of of them are in China. The only country in the Americas with a super-tall skyscraper is the United States, although Mexico and Brazil have one under construction. In Africa, the only super-tall skyscrapers are in Egypt. Notably, construction of buildings over 350 meters has risen significantly since the 1990s. The record for the tallest skyscraper remained undefeated from 1931 to 1974, but after that, the record has been broken multiple times, increasing from 350 meters to 282 meters today. However, most skyscrapers built do not surpas the height of 500 meters. A limitation of this data is that Wikipedia is crowd-sourced, and is susceptible to changes by editors. Similarly, the information might be outdated, especially for articles with less traffic.
